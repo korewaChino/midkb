@@ -1,0 +1,58 @@
+# Example configuration for MIDKb
+# This example config file is made for the Launchkey Mini MK3, for a simple SDVX setup.
+# The Launchkey Mini MK3 has 16 pads and 8 knobs, which can be used to control the game.
+
+# The config uses my own custom Launchkey drumpad layout, which maps the pads 20 notes apart from the default
+# drum layout. If you'd like to use the default drum layout, decrement the note keys by 20.
+
+# the `midi_device` is where MIDKb will try to search for the MIDI device. You can find the device name by running
+# aseqdump -l in the terminal
+# MIDKb uses this field to search for the device using an exact match, so put any substring of the MIDI port
+# that you want to use. It can be the exact port number or the device name depending on your MIDI controller setup.
+# The Launchkey Mini MK3 specifically provides 2 MIDI ports, so this configuration will select a
+# specific port to use. In other cases you might want to use the device name.
+midi_device = "28:0"
+
+
+# The notes mapping are
+# MIDI note = Keycode
+# The keycodes can be found here: https://docs.rs/mouse-keyboard-input/0.9.1/src/mouse_keyboard_input/key_codes.rs.html
+
+# [notes]
+# <MIDI note> = <Keycode>
+[notes]
+60 = 32 # D
+62 = 33 # F
+70 = 36 # J
+72 = 37 # K
+
+50 = 46 # C
+58 = 50 # M
+
+
+# The CC section maps CC messages to actions, such as mouse movement or key presses.
+
+# The bind mode can be either `Mouse` or `Keyboard`. If it's `Mouse`, the `counter_clockwise` and `clockwise` fields
+# Can only be `x`, `y`, `-x`, or `-y`. If it's `Keyboard`, the `counter_clockwise` and `clockwise` fields must be the keycodes,
+# wrapped in quotes.
+
+# The keyboard mode will press the key everytime the CC value changes for the knob,
+# and the mouse mode will move the cursor in the specified axis.
+
+
+
+# [cc.<CC number>]
+# bind_mode = "Mouse" | "Keyboard"
+# counter_clockwise = "x" | "y" | "-x" | "-y" | "<keycode>"
+# clockwise = "x" | "y" | "-x" | "-y" | "<keycode>"
+
+[cc.21]
+bind_mode = "Mouse"
+counter_clockwise = "x"
+clockwise = "x"
+
+# Bind the eighth knob to the Y axis of the mouse (inverted)
+[cc.28]
+bind_mode = "Mouse"
+counter_clockwise = "-y"
+clockwise = "-y"

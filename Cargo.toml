@@ -1,0 +1,19 @@
+[package]
+name = "midkb"
+version = "0.1.0"
+edition = "2021"
+description = "A MIDI to Keyboard/Mouse input mapper"
+authors = ["Cappy Ishihara <cappy@cappuchino.xyz>"]
+license = "MIT"
+repository = "https://github.com/korewaChino/midkb"
+
+
+[dependencies]
+midi-msg = "0.7.3"
+midir = "0.10.0"
+mouse-keyboard-input = "0.9.1"
+serde = { version = "1.0.214", features = ["derive"] }
+tokio = { version = "1.41.0", features = ["full"] }
+toml = "0.8.19"
+tracing = { version = "0.1.40", features = ["log", "async-await"] }
+tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
