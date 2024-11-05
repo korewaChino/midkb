@@ -16,7 +16,9 @@ pub enum CCBindMode {
     #[default]
     Keyboard,
     /// Move the mouse everytime the CC is moved
-    Mouse
+    Mouse,
+    /// Toggle like a switch, similar to NoteOn/NoteOff
+    Toggle,
 }
 
 #[derive(serde::Deserialize, Debug, Default)]
@@ -27,9 +29,9 @@ pub struct CCDirectionConfig {
     // both counter_clockwise can be either a keycode (see keycode crate for the codes, must be a u16)
     // or a mouse axis (x, y)
     #[serde(serialize_with = "serde_with::rust::display_fromstr")]
-    pub counter_clockwise: String,
+    pub counter_clockwise: Option<String>,
     #[serde(serialize_with = "serde_with::rust::display_fromstr")]
-    pub clockwise: String,
+    pub clockwise: Option<String>,
 }
 
 #[derive(serde::Deserialize, Debug, Default)]

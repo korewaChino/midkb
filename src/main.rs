@@ -92,38 +92,53 @@ impl MidiInputHandler {
                         match cc_config.bind_mode {
                             config::CCBindMode::Keyboard => match direction {
                                 CCDirection::CounterClockwise => {
-                                    let _ = self
-                                        .device
-                                        .click(cc_config.counter_clockwise.parse().unwrap());
+                                    if let Some(cc_key) = cc_config.counter_clockwise.as_ref() {
+                                        let _ = self.device.press(cc_key.parse().unwrap());
+                                    }
                                 }
                                 CCDirection::Clockwise => {
-                                    let _ = self.device.click(cc_config.clockwise.parse().unwrap());
+                                    if let Some(cw_key) = cc_config.clockwise.as_ref() {
+                                        let _ = self.device.press(cw_key.parse().unwrap());
+                                    }
                                 }
                             },
                             config::CCBindMode::Mouse => {
                                 // only allow string of x or y inside the config
-                                match direction {
-                                    CCDirection::CounterClockwise => {
-                                        if cc_config.counter_clockwise == "x" {
-                                            let _ = self.device.move_mouse(-10, 0);
-                                        } else if cc_config.counter_clockwise == "y" {
-                                            let _ = self.device.move_mouse(0, -10);
-                                        } else if cc_config.counter_clockwise == "-x" {
-                                            let _ = self.device.move_mouse(10, 0);
-                                        } else if cc_config.counter_clockwise == "-y" {
-                                            let _ = self.device.move_mouse(0, 10);
-                                        }
-                                    }
-                                    CCDirection::Clockwise => {
-                                        if cc_config.clockwise == "x" {
-                                            let _ = self.device.move_mouse(10, 0);
-                                        } else if cc_config.clockwise == "y" {
-                                            let _ = self.device.move_mouse(0, 10);
-                                        } else if cc_config.clockwise == "-x" {
-                                            let _ = self.device.move_mouse(-10, 0);
-                                        } else if cc_config.clockwise == "-y" {
-                                            let _ = self.device.move_mouse(0, -10);
-                                        }
+                                let speed = 10;
+
+                                let axis = match direction {
+                                    CCDirection::CounterClockwise => &cc_config.counter_clockwise,
+                                    CCDirection::Clockwise => &cc_config.clockwise,
+                                };
+
+                                let (dx, dy) = match axis.as_deref() {
+                                    Some("x") => (speed, 0),
+                                    Some("-x") => (-speed, 0),
+                                    Some("y") => (0, speed),
+                                    Some("-y") => (0, -speed),
+                                    _ => (0, 0),
+                                };
+
+                                let (dx, dy) = match direction {
+                                    CCDirection::CounterClockwise => (-dx, -dy),
+                                    CCDirection::Clockwise => (dx, dy),
+                                };
+
+                                let _ = self.device.move_mouse(dx, dy);
+                            }
+                            config::CCBindMode::Toggle => {
+                                // Check the current velocity of the control change
+                                // It should either be 0 or 127
+
+                                // todo: probably make the velocity threshold configurable
+
+                                let velocity = control.value();
+
+                                if let Some(cw_key) = cc_config.clockwise.as_ref() {
+                                    if velocity == 127 {
+                                        let _ = self.device.press(cw_key.parse().unwrap());
+                                    } else if velocity == 0 {
+                                        let _ = self.device.release(cw_key.parse().unwrap());
                                     }
                                 }
                             }

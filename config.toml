@@ -40,11 +40,14 @@ midi_device = "28:0"
 # and the mouse mode will move the cursor in the specified axis.
 
 
-
 # [cc.<CC number>]
-# bind_mode = "Mouse" | "Keyboard"
+# bind_mode = "Mouse" | "Keyboard" | "Toggle"
 # counter_clockwise = "x" | "y" | "-x" | "-y" | "<keycode>"
 # clockwise = "x" | "y" | "-x" | "-y" | "<keycode>"
+
+# Toggle mode expects a CC value of either 0 or 127 to toggle the key press.
+# This is designed for buttons that only send a digital CC message, such as the Launchkey Mini MK3 pads.
+# It will only use the `clockwise` field, and will press the key when the CC value is 127, and release it when it's 0.
 
 [cc.21]
 bind_mode = "Mouse"
