@@ -1,9 +1,7 @@
-
 #[derive(serde::Deserialize, Debug, Default)]
 pub struct Config {
     pub cc: CCConfig,
     pub notes: NoteBinding,
-    
     /// The string to search for in the midi device port
     /// e.g. "28:0" for the port containing "28:0" in the name
     pub midi_device: String,
@@ -23,7 +21,6 @@ pub enum CCBindMode {
 
 #[derive(serde::Deserialize, Debug, Default)]
 pub struct CCDirectionConfig {
-
     pub bind_mode: CCBindMode,
 
     // both counter_clockwise can be either a keycode (see keycode crate for the codes, must be a u16)
@@ -32,6 +29,7 @@ pub struct CCDirectionConfig {
     pub counter_clockwise: Option<String>,
     #[serde(serialize_with = "serde_with::rust::display_fromstr")]
     pub clockwise: Option<String>,
+    pub toggle_key: Option<u16>,
 }
 
 #[derive(serde::Deserialize, Debug, Default)]
@@ -73,6 +71,11 @@ mod tests {
             bind_mode = "Keyboard"
             counter_clockwise = "60"
             clockwise = "70"
+
+            [cc.2]
+            bind_mode = "Toggle"
+            toggle_key = 468
+
             [notes]
             60 = 12
         "#;

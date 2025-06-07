@@ -134,11 +134,11 @@ impl MidiInputHandler {
 
                                 let velocity = control.value();
 
-                                if let Some(cw_key) = cc_config.clockwise.as_ref() {
+                                if let Some(toggle_key) = cc_config.toggle_key {
                                     if velocity == 127 {
-                                        let _ = self.device.press(cw_key.parse().unwrap());
+                                        let _ = self.device.press(toggle_key);
                                     } else if velocity == 0 {
-                                        let _ = self.device.release(cw_key.parse().unwrap());
+                                        let _ = self.device.release(toggle_key);
                                     }
                                 }
                             }
