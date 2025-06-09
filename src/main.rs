@@ -64,20 +64,35 @@ impl MidiInputHandler {
 
         if let MidiMsg::ChannelVoice { channel: _, msg } = msg {
             match msg {
-                ChannelVoiceMsg::NoteOn { note, velocity: _ } => {
-                    // self.device.press(KEY_H);
+                ChannelVoiceMsg::NoteOn { note, velocity } => {
                     if let Some(key) = self.config.notes.get_key(note) {
-                        let _ = self.device.press(key);
+                        if velocity == 0 {
+                            // Some MIDI controllers send Note On with velocity 0 instead of Note Off
+                            info!(
+                                "Note On with velocity 0 (treating as Note Off): {} -> Key: {}",
+                                note, key
+                            );
+                            if let Err(e) = self.device.release(key) {
+                                warn!("Failed to release key {}: {}", key, e);
+                            }
+                        } else {
+                            info!("Note On: {} -> Key: {} (velocity: {})", note, key, velocity);
+                            if let Err(e) = self.device.press(key) {
+                                warn!("Failed to press key {}: {}", key, e);
+                            }
+                        }
+                    } else {
+                        info!("Note On: {} (no key mapping, velocity: {})", note, velocity);
                     }
-
-                    // if let Some(key) = hardcode_notes(note) {
-                    //     let _ = self.device.press(key);
-                    // }
                 }
                 ChannelVoiceMsg::NoteOff { note, velocity: _ } => {
-                    // self.device.release(KEY_H);
                     if let Some(key) = self.config.notes.get_key(note) {
-                        let _ = self.device.release(key);
+                        info!("Note Off: {} -> Key: {}", note, key);
+                        if let Err(e) = self.device.release(key) {
+                            warn!("Failed to release key {}: {}", key, e);
+                        }
+                    } else {
+                        info!("Note Off: {} (no key mapping)", note);
                     }
                 }
 
@@ -136,9 +151,21 @@ impl MidiInputHandler {
 
                                 if let Some(toggle_key) = cc_config.toggle_key {
                                     if velocity == 127 {
-                                        let _ = self.device.press(toggle_key);
+                                        info!("Toggle key {} pressed", toggle_key);
+                                        if let Err(e) = self.device.press(toggle_key) {
+                                            warn!(
+                                                "Failed to press toggle key {}: {}",
+                                                toggle_key, e
+                                            );
+                                        }
                                     } else if velocity == 0 {
-                                        let _ = self.device.release(toggle_key);
+                                        info!("Toggle key {} released", toggle_key);
+                                        if let Err(e) = self.device.release(toggle_key) {
+                                            warn!(
+                                                "Failed to release toggle key {}: {}",
+                                                toggle_key, e
+                                            );
+                                        }
                                     }
                                 }
                             }
@@ -152,12 +179,12 @@ impl MidiInputHandler {
     }
 }
 
-fn midi_msg_callback(time: u64, midimsg: &[u8], input: &mut MidiInputHandler) {
-    trace!(?time, "MIDI Message: {:02X?}", midimsg);
+fn midi_msg_callback(_time: u64, midimsg: &[u8], input: &mut MidiInputHandler) {
+    info!("Raw MIDI bytes: {:02X?}", midimsg);
 
     // parse midi message
 
-    let (msg, len) = match MidiMsg::from_midi(midimsg) {
+    let (msg, _len) = match MidiMsg::from_midi(midimsg) {
         Ok(parsed) => parsed,
         Err(e) => {
             warn!(?e, "Failed to parse MIDI message");
@@ -165,7 +192,7 @@ fn midi_msg_callback(time: u64, midimsg: &[u8], input: &mut MidiInputHandler) {
         }
     };
 
-    trace!(?msg, ?len, "Parsed MIDI message");
+    info!("Parsed MIDI message: {:?}", msg);
 
     input.handle_midi_msg(msg);
 }
