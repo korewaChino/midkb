@@ -5,6 +5,8 @@ pub struct Config {
     /// The string to search for in the midi device port
     /// e.g. "28:0" for the port containing "28:0" in the name
     pub midi_device: String,
+    /// Optional MIDI channel to filter note messages (1-16). If None, all channels are accepted.
+    pub note_channel: Option<u8>,
 }
 
 #[derive(serde::Deserialize, Debug, Default)]
@@ -67,6 +69,7 @@ mod tests {
     fn test_deserialize_config() {
         let config = r#"
             midi_device = "28:0"
+            note_channel = 1
             [cc.1]
             bind_mode = "Keyboard"
             counter_clockwise = "60"

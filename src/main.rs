@@ -23,6 +23,10 @@ pub struct MidiInputHandler {
     // Should contain the CC number as the key and the velocity as value, if not exists it will be created and set
     // to the last known value
     cc_map: HashMap<u8, u8>,
+
+    // Track which MIDI notes are currently pressed for each key
+    // Key: keyboard keycode, Value: Set of MIDI notes currently pressed for that key
+    key_note_map: HashMap<u16, std::collections::HashSet<u8>>,
 }
 
 impl MidiInputHandler {
@@ -31,6 +35,7 @@ impl MidiInputHandler {
             config,
             device,
             cc_map: HashMap::new(),
+            key_note_map: HashMap::new(),
         }
     }
 
@@ -58,42 +63,136 @@ impl MidiInputHandler {
 
         direction.unwrap_or(CCDirection::Clockwise)
     }
+    fn handle_note_press(&mut self, note: u8, key: u16) {
+        // Get or create the set of notes for this key
+        let notes_for_key = self.key_note_map.entry(key).or_default();
+
+        // If this is the first note pressed for this key, press the key
+        let should_press_key = notes_for_key.is_empty();
+
+        // Add this note to the set
+        notes_for_key.insert(note);
+
+        if should_press_key {
+            trace!("Pressing key {} (first note {} for this key)", key, note);
+            if let Err(e) = self.device.press(key) {
+                warn!("Failed to press key {}: {}", key, e);
+            }
+        } else {
+            trace!(
+                "Note {} added to key {} (key already pressed by other notes)",
+                note,
+                key
+            );
+        }
+    }
+
+    fn handle_note_release(&mut self, note: u8, key: u16) {
+        // Get the set of notes for this key
+        if let Some(notes_for_key) = self.key_note_map.get_mut(&key) {
+            // Remove this note from the set
+            notes_for_key.remove(&note);
+
+            // If no more notes are pressed for this key, release the key
+            if notes_for_key.is_empty() {
+                trace!("Releasing key {} (last note {} for this key)", key, note);
+                if let Err(e) = self.device.release(key) {
+                    warn!("Failed to release key {}: {}", key, e);
+                }
+                // Remove the empty set from the map
+                self.key_note_map.remove(&key);
+            } else {
+                trace!(
+                    "Note {} removed from key {} (key still pressed by {} other notes)",
+                    note,
+                    key,
+                    notes_for_key.len()
+                );
+            }
+        } else {
+            warn!(
+                "Attempted to release note {} for key {} but no notes were tracked for this key",
+                note, key
+            );
+        }
+    }
 
     pub fn handle_midi_msg(&mut self, msg: MidiMsg) {
         // handle ChannelVoice messages and the inner data
 
-        if let MidiMsg::ChannelVoice { channel: _, msg } = msg {
+        if let MidiMsg::ChannelVoice { channel, msg } = msg {
             match msg {
                 ChannelVoiceMsg::NoteOn { note, velocity } => {
+                    // Check if we should filter by channel
+                    if let Some(filter_channel) = self.config.note_channel {
+                        if channel as u8 + 1 != filter_channel {
+                            // MIDI channels are 0-based, config is 1-based
+                            trace!(
+                                "Ignoring Note On on channel {} (filtering for channel {})",
+                                channel as u8 + 1,
+                                filter_channel
+                            );
+                            return;
+                        }
+                    }
+
                     if let Some(key) = self.config.notes.get_key(note) {
                         if velocity == 0 {
                             // Some MIDI controllers send Note On with velocity 0 instead of Note Off
                             trace!(
-                                "Note On with velocity 0 (treating as Note Off): {} -> Key: {}",
+                                "Note On with velocity 0 (treating as Note Off): {} -> Key: {} (channel {})",
                                 note,
-                                key
+                                key,
+                                channel as u8 + 1
                             );
-                            if let Err(e) = self.device.release(key) {
-                                warn!("Failed to release key {}: {}", key, e);
-                            }
+                            self.handle_note_release(note, key);
                         } else {
-                            trace!("Note On: {} -> Key: {} (velocity: {})", note, key, velocity);
-                            if let Err(e) = self.device.press(key) {
-                                warn!("Failed to press key {}: {}", key, e);
-                            }
+                            trace!(
+                                "Note On: {} -> Key: {} (velocity: {}, channel: {})",
+                                note,
+                                key,
+                                velocity,
+                                channel as u8 + 1
+                            );
+                            self.handle_note_press(note, key);
                         }
                     } else {
-                        trace!("Note On: {} (no key mapping, velocity: {})", note, velocity);
+                        trace!(
+                            "Note On: {} (no key mapping, velocity: {}, channel: {})",
+                            note,
+                            velocity,
+                            channel as u8 + 1
+                        );
                     }
                 }
                 ChannelVoiceMsg::NoteOff { note, velocity: _ } => {
-                    if let Some(key) = self.config.notes.get_key(note) {
-                        trace!("Note Off: {} -> Key: {}", note, key);
-                        if let Err(e) = self.device.release(key) {
-                            warn!("Failed to release key {}: {}", key, e);
+                    // Check if we should filter by channel
+                    if let Some(filter_channel) = self.config.note_channel {
+                        if channel as u8 + 1 != filter_channel {
+                            // MIDI channels are 0-based, config is 1-based
+                            trace!(
+                                "Ignoring Note Off on channel {} (filtering for channel {})",
+                                channel as u8 + 1,
+                                filter_channel
+                            );
+                            return;
                         }
+                    }
+
+                    if let Some(key) = self.config.notes.get_key(note) {
+                        trace!(
+                            "Note Off: {} -> Key: {} (channel: {})",
+                            note,
+                            key,
+                            channel as u8 + 1
+                        );
+                        self.handle_note_release(note, key);
                     } else {
-                        trace!("Note Off: {} (no key mapping)", note);
+                        trace!(
+                            "Note Off: {} (no key mapping, channel: {})",
+                            note,
+                            channel as u8 + 1
+                        );
                     }
                 }
 
